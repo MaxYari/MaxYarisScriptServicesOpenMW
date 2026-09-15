@@ -8,15 +8,13 @@ This are also similar developer resources around but I always felt they are too 
 
 So yea, hopefully its free performance and less stutter, or maybe it will make everything worse, who knows, some times the mystical ways of OpenMW Lua are truly mystical.
 
-
-
 Now everything below is AI-generated slop describing how exactly all this works and how developers can use it. Clank clank.
 
 ## Installation
 
 Ok actually this is still written by a human.
 
--- Install it like any other OpenMW mod and dont forget to enable the .omwscript file in OpenMW laucnher.
+- Install it like any other OpenMW mod and dont forget to enable the .omwscript file in OpenMW laucnher.
 If thats literally the first OpenMW mod you are installing ever (crazy! welcome!) - [read this tutorial](https://modding-openmw.com/tips/installing-mods/).
 
 Now I give the stage to AI for sure.
