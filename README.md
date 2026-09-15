@@ -1,13 +1,27 @@
 # Max Yari's Script Services (MSS)
 
-Shared engine reads for OpenMW Lua mods. When several mods read the same thing, such as equipment,
-active effects, the interaction ray, combat targets or health, they read it once through MSS and share
-the result.
+Hello Human, this section is written by a fellow human but the following sections are complete slop (but useful for developers). To explain shortly quite often different mods ask the engine to give them the same kind of information every frame - such as AI state, HP, equipment e.t.c. At the very least my mods do. Asking the engine is sometimes expensive performance-wise, so instead this dependency mod ensures that engine is only asked once per frame and the cached info is shared with every single mod that wants it. This should result in _some_ performance gains with my mods.
 
-MSS only caches what the engine returns. It doesn't interpret it: working out what the data means is up
-to each mod. Nothing is read until a mod asks; until then MSS only counts frames and sums `dt`.
+If you want to use this in a mod you are developing feel free to - I will try not to change the already established API, but I can not swear on it.
 
-## Installing and depending on MSS
+This are also similar developer resources around but I always felt they are too frontloaded and insist on say checking for _something_ every frame even if noone asks for it, MSS on contrary does practically nothing unless someone asks for some data, and you can easily provide a cache lifetime with your request to ensure that the info is refetched from the engine not more often than say 10 times a second.
+
+So yea, hopefully its free performance and less stutter, or maybe it will make everything worse, who knows, some times the mystical ways of OpenMW Lua are truly mystical.
+
+
+
+Now everything below is AI-generated slop describing how exactly all this works and how developers can use it. Clank clank.
+
+## Installation
+
+Ok actually this is still written by a human.
+
+-- Install it like any other OpenMW mod and dont forget to enable the .omwscript file in OpenMW laucnher.
+If thats literally the first OpenMW mod you are installing ever (crazy! welcome!) - [read this tutorial](https://modding-openmw.com/tips/installing-mods/).
+
+Now I give the stage to AI for sure.
+
+## For Developers
 
 MSS is a mod of its own: add its folder as a data path and enable `MaxYariScriptServices.omwscripts`,
 ideally before the mods that use it. It declares its one script itself:
