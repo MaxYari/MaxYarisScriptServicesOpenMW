@@ -21,7 +21,7 @@ local nearby = require('openmw.nearby')
 local util = require('openmw.util')
 local I = require('openmw.interfaces')
 
-local VERSION = 1
+local VERSION = 2 -- 2: getInteractionTarget can be asked from onUpdate
 -- Updates a noted hit waits for its health decrease: health changed by the hit can show up one update
 -- after the hit event.
 local HIT_KEEP_UPDATES = 2
@@ -280,19 +280,40 @@ else
     local rayEntry = newEntry()
     rayEntry.value = NO_HIT
 
+    -- The engine allows castRenderingRay only in onFrame and input handlers. Asked from there, the ray is
+    -- cast right away. Asked from anywhere else (onUpdate), the cast fails and the ray MSS casts in its own
+    -- onFrame is returned instead: onFrame casts it when it was asked for in the previous frame, with the
+    -- smallest maxAge asked for then, and runs before any onUpdate. So only the first request after a frame
+    -- without requests gets the previous value.
+    local rayDemandFrame = -math.huge -- last frame the ray was asked for
+    local rayDemandAge = 0            -- smallest maxAge asked for in that frame, 0 for every frame
+    local raySyncFailedFrame = -1     -- a failed cast isn't tried again in the same frame
+
     -- A rendering ray from the camera through the screen center, activation distance plus the third
     -- person camera distance, as Dynamic Camera casts it to find doors.
+    local function castInteractionRay()
+        local from = camera.getPosition()
+        local to = from + camera.viewportToWorldVector(SCREEN_CENTER) * (ACTIVATE_DIST + camera.getThirdPersonDistance())
+        local result = nearby.castRenderingRay(from, to, RAY_OPTIONS)
+        if result.hit then
+            rayEntry.value = { hit = true, hitObject = result.hitObject, hitPos = result.hitPos }
+        else
+            rayEntry.value = NO_HIT
+        end
+        markFetched(rayEntry)
+    end
+
     function interface.getInteractionTarget(maxAge)
-        if not isFresh(rayEntry, maxAge) then
-            local from = camera.getPosition()
-            local to = from + camera.viewportToWorldVector(SCREEN_CENTER) * (ACTIVATE_DIST + camera.getThirdPersonDistance())
-            local result = nearby.castRenderingRay(from, to, RAY_OPTIONS)
-            if result.hit then
-                rayEntry.value = { hit = true, hitObject = result.hitObject, hitPos = result.hitPos }
-            else
-                rayEntry.value = NO_HIT
-            end
-            markFetched(rayEntry)
+        local age = (maxAge ~= nil and maxAge > 0) and maxAge or 0
+        if rayDemandFrame ~= frame then
+            rayDemandFrame = frame
+            rayDemandAge = age
+        elseif age < rayDemandAge then
+            rayDemandAge = age
+        end
+
+        if not isFresh(rayEntry, maxAge) and raySyncFailedFrame ~= frame then
+            if not pcall(castInteractionRay) then raySyncFailedFrame = frame end
         end
         return rayEntry.value
     end
@@ -337,6 +358,9 @@ else
             ui.showMessage("MSS: OpenMW combat target events not found. Mods using MSS combat targets will not work correctly.")
         end
         onUpdate(dt)
+        if frame - rayDemandFrame <= 1 and not isFresh(rayEntry, rayDemandAge) then
+            castInteractionRay()
+        end
     end
 end
 

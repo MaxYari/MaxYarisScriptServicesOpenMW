@@ -21,6 +21,9 @@ Now I give the stage to AI for sure.
 
 ## For Developers
 
+MSS can be used by any OpenMW Lua mod: cached, shared reads of equipment, active effects, the interaction ray, combat targets, health decreases and more, with a cache lifetime you choose per request. All of it is documented in the [git repository](https://github.com/MaxYari/MaxYarisScriptServicesOpenMW#for-developers). If you are already reading this on git - just read below.
+
+<!-- nexus-skip-start -->
 MSS is a mod of its own: add its folder as a data path and enable `MaxYariScriptServices.omwscripts`,
 ideally before the mods that use it. It declares its one script itself:
 
@@ -43,7 +46,8 @@ listeners in `onActive` rather than `onInit`/`onLoad`. An object's interfaces ap
 time, in load order, and `onInit`/`onLoad` run as each script is attached, so a script loaded before MSS
 doesn't see it yet. `onActive` is queued until all of the object's scripts exist.
 
-Check `I.MSS.version` if you rely on something newer than version 1.
+Check `I.MSS.version` if you rely on something newer than version 1. Version 2: `getInteractionTarget`
+can be asked from `onUpdate` (see below); in version 1 it throws there.
 
 ## Caching rules
 
@@ -112,6 +116,12 @@ targets whenever they change (see below). To be told of changes, handle the even
 **`getInteractionTarget`**: a `castRenderingRay` from the camera through the screen center, over
 `iMaxActivateDist` plus the third-person camera distance, with nothing filtered out.
 
+The engine only allows `castRenderingRay` in `onFrame` and input handlers. Asked from there, the ray is
+cast right away. Asked from anywhere else (`onUpdate`), you get the ray MSS casts in its own `onFrame`,
+which runs before any `onUpdate`: MSS casts it there when someone asked for it in the previous frame,
+with the smallest `maxAge` asked for then. So from `onUpdate` it's current from the second frame you ask
+on; the first request after a frame without requests returns the previous value.
+
 ## Combat targets come from the engine's music events
 
 `I.AI` only exists in each actor's own scripts. OpenMW's built-in music script
@@ -142,8 +152,10 @@ mods replacing the player-side `music.lua`.
 | `getPosition` / `getCell` | `self.position` / `self.cell` | first call each frame |
 | Equipment | `Actor.getEquipment`; plus `item.type`, `item.recordId`, `type.record` | per frame or `maxAge`; the extras only when the item changed |
 | Effects | `Actor.activeEffects` once, then `getEffect` and `.magnitude` | per frame or `maxAge`, per effect |
-| Interaction ray | `camera.getPosition`, `viewportToWorldVector`, `getThirdPersonDistance`, `castRenderingRay` | per frame or `maxAge` |
+| Interaction ray | `camera.getPosition`, `viewportToWorldVector`, `getThirdPersonDistance`, `castRenderingRay` | per frame or `maxAge`; from `onUpdate`, in MSS's `onFrame` while it's asked for every frame |
 | Own combat targets | `I.AI.getTargets` | once per actor per load, on first use |
 | Combat targets | `actor.id`, `sendEvent` back to that actor | per change |
 | Health | `health.current`; `health.base` only on a decrease | each update, only while someone listens |
 | Music script check | `vfs.fileExists`, `vfs.open` | once, when the player script loads |
+
+<!-- nexus-skip-end -->
